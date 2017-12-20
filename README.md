@@ -127,10 +127,6 @@ These 3 techniques reduce the size of cumulative parameters and therefore the co
 ![alt text](imgs/pasted_image_at_2017_12_13_10_02_am.png)
 Figure 1:Depicts Lines on the top are testing/validation of big model (17Mo) and lines at the bottom are testing/validation of small model (2Mo)
 
-## Accuracy on the udacity’s test track data
-
-<>
-
 # Waypoint Updater
 
 ## Implementation
