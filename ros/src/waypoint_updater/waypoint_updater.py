@@ -9,11 +9,8 @@ import math
 import copy
 import tf.transformations   # to get Euler coordinates
 import numpy as np
-<<<<<<< HEAD
 import os.path
 import rospkg
-=======
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -35,11 +32,7 @@ LOOKAHEAD_WPS = 50      # Number of waypoints we will publish. You can change th
 # Profile for slowing at traffic light: v = K_SLOW * sqrt(dist - DIST_MIN)
 # This is equivalent to considering a constant deceleration
 K_SLOW = 5     # in m^1/2 . s^-1
-<<<<<<< HEAD
 DIST_MIN = 6   # distance we need to be from stop line
-=======
-DIST_MIN = 10   # distance we need to be from stop line
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
 
 
 class WaypointUpdater(object):
@@ -114,19 +107,11 @@ class WaypointUpdater(object):
 
                 # get position of traffic light
                 traffic_light_waypoint = self.wps.waypoints[self.red_light_wp_idx]
-<<<<<<< HEAD
 
                 # if it is far, we start reducing the speed slowly until our horizon
                 if red_idx_final_wps >= LOOKAHEAD_WPS:
                     red_idx_final_wps = LOOKAHEAD_WPS - 1
 
-=======
-
-                # if it is far, we start reducing the speed slowly until our horizon
-                if red_idx_final_wps >= LOOKAHEAD_WPS:
-                    red_idx_final_wps = LOOKAHEAD_WPS - 1
-
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
                 # Reduce velocity based on distance to light
                 for idx in range(red_idx_final_wps + 1):
                     distance_to_light = math.sqrt(self.distance_sq_between_waypoints(self.final_wps.waypoints[idx], traffic_light_waypoint))
@@ -142,11 +127,7 @@ class WaypointUpdater(object):
             self.final_waypoints_pub.publish(self.final_wps)
             
             if self.log_to_csv:
-<<<<<<< HEAD
                 self.log_data(rospy.get_rostime(), car_x, car_y, closest_idx_waypoint, self.wps.waypoints[closest_idx_waypoint].pose.pose.position.x, self.wps.waypoints[closest_idx_waypoint].pose.pose.position.y)
-=======
-                    self.log_data(rospy.get_rostime(), car_x, car_y, closest_idx_waypoint, self.wps.waypoints[closest_idx_waypoint].pose.pose.position.x, self.wps.waypoints[closest_idx_waypoint].pose.pose.position.y)
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
  
             
             rate.sleep()
@@ -215,16 +196,12 @@ class WaypointUpdater(object):
         return closest_index
 
     def log_init(self, log_path):
-<<<<<<< HEAD
         log_dir = rospkg.get_log_dir() + "/latest"
         log_dir = os.path.realpath(log_dir)
         log_file = log_dir + "/" + log_path
         log_handle = open(log_file,'w')
         headers = ','.join(["time", "car_x", "car_y", "closest_idx_waypoint", "waypoint_x", "waypoint_y"])
         log_handle.write(headers + '\n')
-=======
-        log_handle = open(log_path,'w')
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
         return log_handle
 
     def log_data(self, *args):

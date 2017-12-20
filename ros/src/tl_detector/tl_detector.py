@@ -12,19 +12,12 @@ import cv2
 import yaml
 import math
 import copy
-<<<<<<< HEAD
 import os.path
 import rospkg
 
 STATE_EMA = 0.2                     # update parameter using exponential moving average for traffic light state
 MAX_DISTANCE_SQ_LIGHT = 10000       # max distance for which we try to detect lights
 RED_PROBABILITY_THRESH = 0.5        # consider there is a red light if our confidence is above this threshold
-=======
-
-STATE_EMA = 0.15                # update parameter using exponential moving average for traffic light state
-MAX_DISTANCE_SQ_LIGHT = 10000      # max distance for which we try to detect lights
-RED_PROBABILITY_THRESH = 0.5    # consider there is a red light if our confidence is above this threshold
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
 
 class TLDetector(object):
     def __init__(self):
@@ -64,14 +57,11 @@ class TLDetector(object):
         # Probability of having a red light ahead, updated through EMA
         self.red_state_prob = 0.5
 
-<<<<<<< HEAD
         # Logging data in csv file
         self.log_to_csv = True
         if self.log_to_csv:
             self.log_handle = self.log_init('tl_detector.csv')
 
-=======
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
         self.loop()
 
     def loop(self):
@@ -95,15 +85,11 @@ class TLDetector(object):
                     light_wp = -1
 
                 # Publish upcoming red lights at camera frequency.
-<<<<<<< HEAD
                 self.upcoming_red_light_pub.publish(Int32(light_wp))
                 
                 # Log data
                 if self.log_to_csv:
                     self.log_data(rospy.get_rostime(), red_prob, self.red_state_prob, light_wp)
-=======
-                self.upcoming_red_light_pub.publish(Int32(light_wp))            
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
 
             rate.sleep()
 
@@ -207,7 +193,6 @@ class TLDetector(object):
         light_waypoint_idx = self.get_closest_waypoint(closest_light)
 
         return light_waypoint_idx, red_prob
-<<<<<<< HEAD
 
     def log_init(self, log_path):
         log_dir = rospkg.get_log_dir() + "/latest"
@@ -220,8 +205,6 @@ class TLDetector(object):
 
     def log_data(self, *args):
         self.log_handle.write(','.join(str(arg) for arg in args) + '\n')
-=======
->>>>>>> bad2e61290983b1b85958c96b83e35c80c0c8b22
 
 if __name__ == '__main__':
     try:
