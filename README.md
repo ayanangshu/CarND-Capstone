@@ -1,5 +1,5 @@
 # Self driving car system integration project
-## Implemented by Team Rushers
+## Implemented by Ayanangshu Das(Part of Team Rushers)
 
 #### Dec 15, 2017
 
