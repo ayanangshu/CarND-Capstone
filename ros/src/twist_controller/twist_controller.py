@@ -1,5 +1,7 @@
 import rospy
 from pid import PID
+from yaw_controller import YawController
+from lowpass import LowPassFilter
 
 GAS_DENSITY = 2.858
 ONE_MPH = 0.44704
@@ -7,62 +9,101 @@ DT = 1./50.
 
 
 class Controller(object):
-    def __init__(self, steer_ratio, decel_limit, accel_limit):
+    def __init__(self, steer_ratio, decel_limit, accel_limit, max_steer_angle, wheel_base, max_let_accel,
+                 max_throttle_percent, max_braking_percent):
 
         self.steer_ratio = steer_ratio
         self.decel_limit = decel_limit
         self.accel_limit = accel_limit
+        self.max_steer_angle = max_steer_angle
+        self.max_let_accel = max_let_accel
+        self.wheel_base = wheel_base
+        self.max_braking_percent = max_braking_percent
 
-        self.throttle_pid = PID(1, 0.1, 0.1, self.decel_limit, self.accel_limit)
-        self.brake_pid = PID(1, 0.1, 0.1, self.decel_limit, self.accel_limit)
-        self.last_velocity_error = 0
+        # We use proportional factors between Carla and the simulator.
+        # The simulator only was used for calibration. Max values for Carla were extracted through
+        # "dbw_test.py" and provided rosbag
+        calib_throttle = max_throttle_percent / 0.4
+        calib_brake = max_braking_percent / 100
+        self.throttle_pid = PID(0.1 * calib_throttle, 0.001 * calib_throttle, 0, 0, max_throttle_percent)
+        self.brake_pid = PID(60. * calib_brake, 1. * calib_brake, 0, 0, max_braking_percent)
+
+        tau = 0.1
+        self.throttle_filter = LowPassFilter(tau, DT)
+        self.brake_filter = LowPassFilter(tau, DT)
+        self.steer_filter = LowPassFilter(tau, DT)
         self.last_time = 0
         self.DT = DT
+        self.brakeLatch = False
+
+        self.yaw_controller = YawController(self.wheel_base, self.steer_ratio,
+                                            0.5, self.max_let_accel, self.max_steer_angle)
 
     def control(self, target_linear_velocity, target_angular_velocity,
-                current_linear_velocity, dbw_status):
+                current_linear_velocity, dbw_status, log_handle):
         '''Defines target throttle, brake and steering values'''
 
-        if dbw_status:
-
-            # Update DT
-            new_time = rospy.get_rostime().to_sec()
-            if self.last_time:  # The first time, we are not able to calculate DT
-                self.DT = new_time - self.last_time
-            self.last_time = new_time
-
+        # Update DT
+        new_time = rospy.get_rostime()
+        if self.last_time:  # The first time, we are not able to calculate DT
+            self.DT = (new_time - self.last_time).to_sec()
+        self.last_time = new_time
+            
+        if dbw_status:            
             velocity_error = target_linear_velocity - current_linear_velocity
 
-            if self.is_change_acc(velocity_error):
-                self.throttle_pid.reset()
-                self.brake_pid.reset()
-
-            # implement throttle controller
-            if velocity_error >= 0:
-                throttle = self.throttle_pid.step(velocity_error, DT)
+            # if we're going too slow, release the brakes (if they are applied)
+            # This essentially adds hysterisis: the brakes are only enabled if our velocity error is negative, and only
+            # released if the velocity error is positive 2 or greater.
+            if velocity_error > 1:
+                self.brakeLatch = False
+            if not self.brakeLatch:
+                throttle = self.throttle_pid.step(velocity_error, self.DT)
                 brake = 0
-
-            # implement brake controller
+                self.brake_pid.reset()
+                self.brake_filter.reset()
+                # if we go too fast and we cannot decrease throttle, we need to start braking
+                if (velocity_error < 0 and throttle is 0) or (velocity_error < -1):
+                    self.brakeLatch = True
             else:
+                # We are currently braking
                 throttle = 0
-                brake = self.brake_pid.step(-velocity_error, DT)
-
+                self.throttle_pid.reset()
+                self.throttle_filter.reset()
+                brake = self.brake_pid.step(-velocity_error, self.DT)
+            # If we're about to come to a stop, clamp the brake command to some value to hold the vehicle in place
+            if current_linear_velocity < .1 and target_linear_velocity == 0:
+                throttle = 0
+                brake = self.max_braking_percent
+                
             # implement steering controller
-            steering = self.steer_ratio * target_angular_velocity
+            steer_target = self.yaw_controller.get_steering(target_linear_velocity,
+                                                     target_angular_velocity,
+                                                     current_linear_velocity)
 
-            self.last_velocity_error = velocity_error
+            # filter commands
+            throttle = self.throttle_filter.filt(throttle)
+            brake = self.brake_filter.filt(brake)
+            steering = self.steer_filter.filt(steer_target)
 
         else:
-            throttle = 0
-            brake = 0
-            steering = 0
-            rospy.loginfo("dbw_status false")
+            self.brakeLatch = False
+            self.throttle_pid.reset()
+            self.brake_pid.reset()
+            self.throttle_filter.reset()
+            self.brake_filter.reset()
+            self.steer_filter.reset()
+            throttle, brake, steering = 0, 0, 0
+            pid_throttle, velocity_error = 0, 0
+
+        # Log data
+        throttle_P, throttle_I, throttle_D = self.throttle_pid.get_PID()
+        brake_P, brake_I, brake_D = self.brake_pid.get_PID()
+        steer_P, steer_I, steer_D = 0, 0, 0
+        self.log_data(log_handle, throttle_P, throttle_I, throttle_D, brake_P, brake_I, brake_D,
+                          velocity_error, self.DT, int(self.brakeLatch))
 
         return throttle, brake, steering
-
-    def is_change_acc(self, velocity_error):
-
-        is_switch_brake = (self.last_velocity_error >= 0) and (velocity_error < 0)
-        is_switch_acc = (self.last_velocity_error <= 0) and (velocity_error > 0)
-
-        return is_switch_brake or is_switch_acc
+    
+    def log_data(self, log_handle, *args):
+        log_handle.write(','.join(str(arg) for arg in args) + ',')
