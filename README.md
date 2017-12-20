@@ -60,11 +60,11 @@ roslaunch launch/styx.launch
 
 # Team
 
-•	Boris Dayma, Lead
-•	Chris Ferone
-•	Taiki Nishime
-•	Pabasara Karunanayake
-•	Ayanangshu Das
+•	Boris Dayma, Lead(koushkov@gmail.com)
+•	Chris Ferone(chrisferone@gmail.com)
+•	Taiki Nishime(taiki.one4k@gmail.com)
+•	Pabasara Karunanayake(pabasarak@gmail.com)
+•	Ayanangshu Das(ayanangshu.das@gmail.com)
 
 # Results
 
